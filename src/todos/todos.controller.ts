@@ -10,16 +10,15 @@ import {
 } from '@nestjs/common';
 import { TodosService } from './todos.service';
 import type { Filter } from './todo.model';
-import type { Todo } from './todo.model';
 import { TodosResponseDto } from './dto/todos-response.dto';
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-
+import { Todo } from './todo.entity';
 @ApiTags('todos')
 @Controller('todos')
 export class TodosController {
-  constructor(private todosService: TodosService) {}
+  constructor(private readonly todosService: TodosService) {}
 
   @Get()
   @ApiOperation({ summary: 'Retrieve all todos with optional filtering' })
@@ -28,8 +27,10 @@ export class TodosController {
     description: 'List of todos',
     type: TodosResponseDto,
   })
-  getAllTodos(@Query('filter') filter: Filter): TodosResponseDto {
-    const todos = this.todosService.findAll(filter);
+  async getAllTodos(
+    @Query('filter') filter: Filter,
+  ): Promise<TodosResponseDto> {
+    const todos = await this.todosService.findAll(filter);
     return new TodosResponseDto(todos);
   }
 
@@ -40,9 +41,8 @@ export class TodosController {
     description: 'The found todo',
   })
   @ApiResponse({ status: 404, description: 'Todo not found' })
-  getTodoById(@Param('id') id: string): Todo {
-    const todo = this.todosService.findById(id);
-    return todo;
+  async getTodoById(@Param('id') id: string): Promise<Todo> {
+    return await this.todosService.findById(id);
   }
 
   @Post()
@@ -51,8 +51,8 @@ export class TodosController {
     status: 201,
     description: 'The created todo',
   })
-  createTodo(@Body() createTodoDto: CreateTodoDto): Todo {
-    return this.todosService.createTodo(createTodoDto);
+  async createTodo(@Body() createTodoDto: CreateTodoDto): Promise<Todo> {
+    return await this.todosService.createTodo(createTodoDto);
   }
 
   @Put(':id')
@@ -62,11 +62,11 @@ export class TodosController {
     description: 'The updated todo',
   })
   @ApiResponse({ status: 404, description: 'Todo not found' })
-  updateTodo(
+  async updateTodo(
     @Param('id') id: string,
     @Body() updateTodoDto: UpdateTodoDto,
-  ): Todo {
-    return this.todosService.updateTodo(id, updateTodoDto);
+  ): Promise<Todo> {
+    return await this.todosService.updateTodo(id, updateTodoDto);
   }
 
   @Delete(':id')
@@ -76,7 +76,7 @@ export class TodosController {
     description: 'The todo has been deleted',
   })
   @ApiResponse({ status: 404, description: 'Todo not found' })
-  deleteTodo(@Param('id') id: string): void {
-    return this.todosService.deleteTodo(id);
+  async deleteTodo(@Param('id') id: string): Promise<void> {
+    return await this.todosService.deleteTodo(id);
   }
 }

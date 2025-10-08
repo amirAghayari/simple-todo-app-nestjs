@@ -1,62 +1,52 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Filter, Todo } from './todo.model';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Todo } from './todo.entity';
 import { CreateTodoDto } from './dto/create-todo.dto';
 import { UpdateTodoDto } from './dto/update-todo.dto';
+import { Filter } from './todo.model';
 
 @Injectable()
 export class TodosService {
-  private todos: Todo[] = [];
+  constructor(
+    @InjectRepository(Todo)
+    private readonly todoRepo: Repository<Todo>,
+  ) {}
 
-  findAll(filter: Filter): Todo[] {
-    let items = this.todos;
+  async findAll(filter: Filter): Promise<Todo[]> {
     if (filter === 'active') {
-      items = items.filter((todo) => !todo.completed);
+      return this.todoRepo.find({ where: { completed: false } });
     } else if (filter === 'completed') {
-      items = items.filter((todo) => todo.completed);
+      return this.todoRepo.find({ where: { completed: true } });
     }
-    return items;
+    return this.todoRepo.find();
   }
 
-  findById(id: string): Todo {
-    const todo = this.todos.find((t) => t.id === id);
+  async findById(id: string): Promise<Todo> {
+    const todo = await this.todoRepo.findOne({ where: { id } });
     if (!todo) {
       throw new NotFoundException('Todo not found');
     }
     return todo;
   }
 
-  createTodo(createTodoDto: CreateTodoDto): Todo {
-    const todo: Todo = {
-      id: crypto.randomUUID(),
+  async createTodo(createTodoDto: CreateTodoDto): Promise<Todo> {
+    const todo = this.todoRepo.create({
       title: createTodoDto.title,
-      completed: false,
-      createdAt: new Date(),
-    };
-    this.todos.push(todo);
-    return todo;
+    });
+    return this.todoRepo.save(todo);
   }
 
-  updateTodo(id: string, UpdateTodoDto: UpdateTodoDto): Todo {
-    let found = false;
-    let updatedTodo: Todo = {
-      id: '',
-      title: '',
-      completed: false,
-      createdAt: new Date(),
-    };
-    this.todos = this.todos.map((t) => {
-      if (t.id !== id) return t;
-      found = true;
-      updatedTodo = { ...t, ...UpdateTodoDto };
-      return updatedTodo;
-    });
-    if (!found) {
+  async updateTodo(id: string, updateTodoDto: UpdateTodoDto): Promise<Todo> {
+    const todo = await this.findById(id);
+    const updated = Object.assign(todo, updateTodoDto);
+    return this.todoRepo.save(updated);
+  }
+
+  async deleteTodo(id: string): Promise<void> {
+    const result = await this.todoRepo.delete(id);
+    if (result.affected === 0) {
       throw new NotFoundException('Todo not found');
     }
-    return updatedTodo;
-  }
-
-  deleteTodo(id: string): void {
-    this.todos = this.todos.filter((t) => t.id !== id);
   }
 }
